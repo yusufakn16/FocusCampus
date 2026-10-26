@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OdakKampüs — Ders Çalışma Sayacı ve Verimlilik Takibi</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+    }
+    .timer-ring {
+      transition: stroke-dashoffset 0.35s ease;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Toast Bildirimi -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Üst Navigasyon -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            OdakKampüs
+            <span id="saveStatusBadge" class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+              ✓ Otomatik Kayıt Aktif
+            </span>
+          </h1>
+          <p class="text-xs text-slate-400">Ders Çalışma Sayacı & Geçmiş Süre Analizi</p>
+        </div>
+      </div>
+
+      <!-- Sekmeler -->
+      <nav class="flex items-center gap-1 bg-slate-800/90 p-1 rounded-xl border border-slate-700/70">
+        <button id="tabBtnTimer" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-indigo-600 text-white shadow">
+          ⏱️ Sayaç & Çalışma
+        </button>
+        <button id="tabBtnStats" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-300 hover:text-white">
+          📊 İstatistik & Grafik
+        </button>
+        <button id="tabBtnHistory" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-300 hover:text-white">
+          🗂️ Çalışma Geçmişi
+        </button>
+      </nav>
+
+      <!-- Sağ Kontroller -->
+      <div class="flex items-center gap-2">
+        <button id="soundToggleBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition" title="Sesli Bildirim">
+          <span id="soundIcon">🔔</span>
+          <span id="soundLabel" class="hidden sm:inline">Ses Açık</span>
+        </button>
+        <button id="openManualAddBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 transition">
+          <span>+ Geçmiş Süre Ekle</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- Üst Özet Kartları (Her Zaman Görünür) -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <!-- Bugün Çalışılan -->
+      <div class="glass-card rounded-2xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400">Bugün Çalışılan</span>
+          <span class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-bold">🔥</span>
+        </div>
+        <div class="mt-2">
+          <div id="statTodayMinutes" class="text-2xl sm:text-3xl font-extrabold text-white">0 dk</div>
+          <div class="flex items-center justify-between text-xs text-slate-400 mt-1">
+            <span id="statTodayHours">0 dk</span>
+            <button id="editGoalBtn" class="text-indigo-400 hover:text-indigo-300 underline">Hedef: <span id="dailyGoalText">120</span> dk</button>
+          </div>
+          <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden mt-2">
+            <div id="dailyGoalBar" class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Son 7 Gün Toplamı -->
+      <div class="glass-card rounded-2xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400">Son 7 Gün Toplamı</span>
+          <span class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center text-sm font-bold">📅</span>
+        </div>
+        <div class="mt-2">
+          <div id="statWeekMinutes" class="text-2xl sm:text-3xl font-extrabold text-white">0 dk</div>
+          <p id="statWeekSub" class="text-xs text-slate-400 mt-1">Günlük ort. 0 dk</p>
+        </div>
+      </div>
+
+      <!-- Tüm Zamanlar Toplamı -->
+      <div class="glass-card rounded-2xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400">Toplam Kayıtlı Süre</span>
+          <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-bold">🏆</span>
+        </div>
+        <div class="mt-2">
+          <div id="statTotalMinutes" class="text-2xl sm:text-3xl font-extrabold text-white">0 dk</div>
+          <p id="statTotalSessions" class="text-xs text-slate-400 mt-1">0 oturum</p>
+        </div>
+      </div>
+
+      <!-- En Çok Çalışılan Konu -->
+      <div class="glass-card rounded-2xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400">En Çok Çalışılan Konu & Verim</span>
+          <span class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm font-bold">⭐</span>
+        </div>
+        <div class="mt-2">
+          <div id="statTopSubject" class="text-lg sm:text-xl font-bold text-white truncate">Henüz Kayıt Yok</div>
+          <p id="statAvgFocus" class="text-xs text-slate-400 mt-1">Ortalama Verimlilik: - / 5.0 ⭐</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKME 1: SAYAÇ & ÇALIŞMA EKRANI -->
+    <section id="viewTimer" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- Sol: Ana Sayaç Kartı -->
+      <div class="lg:col-span-7 glass-card rounded-3xl p-5 sm:p-7 flex flex-col items-center justify-between relative overflow-hidden">
+        
+        <!-- Mod Seçici: Süre Belirle (Geri Sayım) veya Kronometre (İleri Sayım) -->
+        <div class="w-full flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-800">
+          <div class="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+            <button id="modeCustomBtn" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-indigo-600 text-white shadow transition">
+              ⏳ Süre Belirle (Geri Sayım)
+            </button>
+            <button id="modeStopwatchBtn" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-400 hover:text-white transition">
+              ⏱️ Kronometre (İleri Sayım)
+            </button>
+          </div>
+
+          <!-- Süre (Dakika) Belirleme Kutusu -->
+          <div id="customDurationBox" class="flex items-center gap-2">
+            <label for="customMinutesInput" class="text-xs font-medium text-slate-300">Dakika:</label>
+            <input id="customMinutesInput" type="number" min="1" max="600" value="40" class="w-20 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs sm:text-sm text-center font-bold text-white focus:outline-none focus:border-indigo-500" />
+            <button id="applyCustomMinutesBtn" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow transition">
+              Ayarla
+            </button>
+          </div>
+        </div>
+
+        <!-- Çalışılacak Konu Girişi -->
+        <div class="w-full mt-4">
+          <label for="topicInput" class="block text-xs font-semibold text-slate-300 mb-1.5">📝 Çalışılacak Konu</label>
+          <input id="topicInput" type="text" placeholder="Çalışacağın konuyu yaz..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
+        </div>
+
+        <!-- Dairesel Sayaç Göstergesi -->
+        <div class="relative my-4 flex items-center justify-center">
+          <svg class="w-64 h-64 sm:w-72 sm:h-72" viewBox="0 0 240 240">
+            <circle cx="120" cy="120" r="104" stroke="rgba(51, 65, 85, 0.5)" stroke-width="10" fill="none" />
+            <circle id="timerProgressCircle" class="timer-ring" cx="120" cy="120" r="104" stroke="#6366f1" stroke-width="10" stroke-linecap="round" fill="none" stroke-dasharray="653.45" stroke-dashoffset="0" />
+          </svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+            <span id="currentModeBadge" class="text-xs font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 mb-2">
+              HEDEF SÜRE: 40 DK
+            </span>
+            <div id="timerDisplay" class="text-5xl sm:text-6xl font-extrabold tracking-tight tabular-nums text-white">
+              40:00
+            </div>
+            <p id="elapsedInfoText" class="text-xs text-slate-400 mt-2">
+              Bu oturumda geçen süre: <span id="sessionElapsedMins" class="text-slate-200 font-semibold">0 dk 0 sn</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Odak Puanı Seçimi -->
+        <div class="flex items-center gap-2 mb-4 bg-slate-900/70 px-3.5 py-1.5 rounded-xl border border-slate-800">
+          <span class="text-xs text-slate-400">Oturum Verimlilik Puanı:</span>
+          <div id="focusRatingGroup" class="flex items-center gap-1">
+            <button type="button" data-rating="1" class="rating-star text-base opacity-40 hover:opacity-100 transition">⭐</button>
+            <button type="button" data-rating="2" class="rating-star text-base opacity-40 hover:opacity-100 transition">⭐</button>
+            <button type="button" data-rating="3" class="rating-star text-base opacity-40 hover:opacity-100 transition">⭐</button>
+            <button type="button" data-rating="4" class="rating-star text-base opacity-100 transition">⭐</button>
+            <button type="button" data-rating="5" class="rating-star text-base opacity-100 transition">⭐</button>
+          </div>
+          <span id="ratingValueLabel" class="text-xs font-semibold text-amber-400 ml-1">5/5</span>
+        </div>
+
+        <!-- Sayaç Kontrol Butonları -->
+        <div class="w-full flex flex-wrap items-center justify-center gap-3">
+          <button id="startPauseBtn" class="px-7 py-3 rounded-2xl font-bold text-sm sm:text-base bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition flex items-center gap-2">
+            <span id="startPauseIcon">▶️</span>
+            <span id="startPauseText">Sayacı Başlat</span>
+          </button>
+
+          <button id="finishAndSaveBtn" class="px-5 py-3 rounded-2xl font-semibold text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 transition flex items-center gap-1.5">
+            <span>💾</span>
+            <span>Bitir & Kaydet</span>
+          </button>
+
+          <button id="resetTimerBtn" class="px-4 py-3 rounded-2xl font-semibold text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+            🔄 Sıfırla
+          </button>
+        </div>
+      </div>
+
+      <!-- Sağ: Bugünün Çalışmaları & Odak Görev Listesi -->
+      <div class="lg:col-span-5 flex flex-col gap-6">
+        
+        <!-- Bugün Ne Kadar Çalıştım? (Hızlı Özet) -->
+        <div class="glass-card rounded-3xl p-5 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h2 class="text-base font-bold text-white">📋 Bugünkü Çalışma Oturumların</h2>
+              <p class="text-xs text-slate-400">Kaydettiğin her oturum anında burada görünür ve saklanır</p>
+            </div>
+            <span id="todaySessionCountBadge" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">
+              0 Oturum
+            </span>
+          </div>
+
+          <div id="todaySessionsList" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+        </div>
+
+        <!-- Odak Görev Listesi (Hedefler / Yapılacaklar) -->
+        <div class="glass-card rounded-3xl p-5 flex-1 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h2 class="text-base font-bold text-white">✅ Çalışma Görevleri & Hedefler</h2>
+                <p class="text-xs text-slate-400">Bugün tamamlayacağın konuları işaretle</p>
+              </div>
+              <span id="todoProgressBadge" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300">0/0</span>
+            </div>
+
+            <div class="flex gap-2 mb-3">
+              <input id="todoInput" type="text" placeholder="Yeni çalışma hedefi ekle..." class="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
+              <button id="addTodoBtn" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs sm:text-sm font-semibold text-white transition">
+                Ekle
+              </button>
+            </div>
+
+            <div id="todoListContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SEKME 2: İSTATİSTİKLER & GRAFİKLER -->
+    <section id="viewStats" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Son 7 Günlük Çalışma Grafiği -->
+        <div class="glass-card rounded-3xl p-5 sm:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base font-bold text-white">📅 Son 7 Günlük Çalışma Süresi (Dakika)</h2>
+              <p class="text-xs text-slate-400">Önceki günlerde kaçar dakika çalıştığını karşılaştır</p>
+            </div>
+          </div>
+          <div class="relative h-72">
+            <canvas id="weeklyBarChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Konulara Göre Süre Dağılımı -->
+        <div class="glass-card rounded-3xl p-5 sm:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base font-bold text-white">📚 Konulara Göre Toplam Süre Dağılımı</h2>
+              <p class="text-xs text-slate-400">Hangi konuya toplam kaç dakika ayırdığını incele</p>
+            </div>
+          </div>
+          <div class="relative h-72">
+            <canvas id="subjectDoughnutChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Konu Bazlı Detaylı Süre Kartları -->
+      <div class="glass-card rounded-3xl p-5 sm:p-6">
+        <h3 class="text-base font-bold text-white mb-4">📌 Konu Bazında Toplam Çalışma Özeti</h3>
+        <div id="subjectBreakdownGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+      </div>
+    </section>
+
+    <!-- SEKME 3: ÇALIŞMA GEÇMİŞİ TABLOSU & YEDEKLEME -->
+    <section id="viewHistory" class="hidden space-y-6">
+      <div class="glass-card rounded-3xl p-5 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white">🗂️ Tüm Çalışma Geçmişi</h2>
+            <p class="text-xs text-slate-400">Kaydettiğin tüm çalışma oturumların, sürelerin ve konu başlıkların</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <input id="historySearchInput" type="text" placeholder="Konu veya tarih ara..." class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
+            <button id="exportCsvBtn" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition">
+              📥 CSV İndir
+            </button>
+            <button id="exportJsonBtn" class="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-xs font-medium text-indigo-300 border border-indigo-500/30 transition">
+              💾 Yedek İndir (.json)
+            </button>
+            <label for="importJsonInput" class="cursor-pointer px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-xs font-medium text-emerald-300 border border-emerald-500/30 transition">
+              📂 Yedek Yükle
+            </label>
+            <input id="importJsonInput" type="file" accept=".json" class="hidden" />
+            <button id="clearAllDataBtn" class="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-xs font-medium text-rose-300 border border-rose-500/30 transition">
+              🗑️ Geçmişi Temizle
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase">
+                <th class="py-3 px-3">Tarih & Saat</th>
+                <th class="py-3 px-3">Çalışılan Konu</th>
+                <th class="py-3 px-3">Mod</th>
+                <th class="py-3 px-3">Süre</th>
+                <th class="py-3 px-3">Verim</th>
+                <th class="py-3 px-3 text-right">İşlem</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody" class="divide-y divide-slate-800/70 text-xs sm:text-sm"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL 1: Manuel Geçmiş Çalışma Süresi Ekle -->
+  <div id="manualAddModal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="glass-card rounded-3xl max-w-md w-full p-6 border border-slate-700 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-white">➕ Geçmiş Çalışma Süresi Ekle</h3>
+        <button id="closeManualAddBtn" class="text-slate-400 hover:text-white text-sm font-bold px-2 py-1">✕</button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label for="manualTopicInput" class="block text-xs font-medium text-slate-300 mb-1">Çalışılan Konu</label>
+          <input id="manualTopicInput" type="text" placeholder="Çalıştığın konuyu yaz..." class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="manualMinutesInput" class="block text-xs font-medium text-slate-300 mb-1">Çalışılan Süre (Dakika)</label>
+            <input id="manualMinutesInput" type="number" min="1" max="600" value="40" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white" />
+          </div>
+          <div>
+            <label for="manualDateInput" class="block text-xs font-medium text-slate-300 mb-1">Tarih</label>
+            <input id="manualDateInput" type="date" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white" />
+          </div>
+        </div>
+        <div>
+          <label for="manualRatingSelect" class="block text-xs font-medium text-slate-300 mb-1">Verimlilik Puanı</label>
+          <select id="manualRatingSelect" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white">
+            <option value="5">⭐⭐⭐⭐⭐ (5 - Çok Verimli)</option>
+            <option value="4">⭐⭐⭐⭐ (4 - Verimli)</option>
+            <option value="3">⭐⭐⭐ (3 - Orta)</option>
+            <option value="2">⭐⭐ (2 - Düşük)</option>
+            <option value="1">⭐ (1 - Çok Dağınık)</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-5">
+        <button id="cancelManualAddBtn" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">İptal</button>
+        <button id="saveManualAddBtn" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Günlük Hedef Düzenle -->
+  <div id="settingsModal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="glass-card rounded-3xl max-w-md w-full p-6 border border-slate-700 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="settingsModalTitle" class="text-base font-bold text-white">🎯 Günlük Hedef Ayarı</h3>
+        <button id="closeSettingsModalBtn" class="text-slate-400 hover:text-white text-sm font-bold px-2 py-1">✕</button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label for="dailyGoalInput" class="block text-xs font-medium text-slate-300 mb-1">Günlük Çalışma Hedefi (Dakika)</label>
+          <div class="flex gap-2">
+            <input id="dailyGoalInput" type="number" min="15" max="720" value="120" class="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white" />
+            <button id="saveDailyGoalBtn" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold">Hedefi Güncelle</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Onay Modalı (Geçmişi Temizle) -->
+  <div id="confirmClearModal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="glass-card rounded-3xl max-w-sm w-full p-6 border border-slate-700 shadow-2xl text-center">
+      <div class="text-3xl mb-2">⚠️</div>
+      <h3 class="text-base font-bold text-white mb-1">Tüm Kayıtlar Silinsin mi?</h3>
+      <p class="text-xs text-slate-400 mb-5">Kaydedilmiş tüm geçmiş çalışma sürelerin silinecek. Bu işlem geri alınamaz.</p>
+      <div class="flex justify-center gap-2">
+        <button id="cancelClearBtn" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Vazgeç</button>
+        <button id="confirmClearYesBtn" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold">Evet, Sil</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Kalıcı Veri Depolama (LocalStorage + Window.name Fallback) ---
+    const STORAGE_KEY = 'odakkampus_user_data_v3';
+
+    const TOPIC_COLORS = [
+      '#6366f1', '#0ea5e9', '#10b981', '#f59e0b',
+      '#ec4899', '#8b5cf6', '#14b8a6', '#f43f5e'
+    ];
+
+    function getTopicColor(topicName) {
+      let hash = 0;
+      const str = topicName || 'Konu';
+      for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      return TOPIC_COLORS[Math.abs(hash) % TOPIC_COLORS.length];
+    }
+
+    // Eski örnek verileri içeren anahtarları temizle
+    function cleanupLegacyDemoStorage() {
+      try {
+        localStorage.removeItem('odakkampus_study_data_v1');
+        localStorage.removeItem('odakkampus_study_data_v2');
+      } catch (e) {
+        // Yoksay
+      }
+    }
+
+    function createEmptyData() {
+      return {
+        dailyGoal: 120,
+        defaultTimerMinutes: 40,
+        soundEnabled: true,
+        sessions: [],
+        todos: []
+      };
+    }
+
+    function loadStorage() {
+      cleanupLegacyDemoStorage();
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.sessions)) return parsed;
+        }
+      } catch (e) {
+        // Sandboxed iframe içinde localStorage kısıtlıysa window.name yedeğine bak
+      }
+      try {
+        if (window.name && window.name.startsWith('ODAKKAMPUS_DATA:')) {
+          const parsed = JSON.parse(window.name.slice('ODAKKAMPUS_DATA:'.length));
+          if (parsed && Array.isArray(parsed.sessions)) return parsed;
+        }
+      } catch (e) {
+        // Yoksay
+      }
+      return null;
+    }
+
+    function flashSaveBadge() {
+      const badge = document.getElementById('saveStatusBadge');
+      if (!badge) return;
+      badge.textContent = '💾 Kaydedildi';
+      badge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-400/50 transition-all';
+      setTimeout(() => {
+        badge.textContent = '✓ Otomatik Kayıt Aktif';
+        badge.className = 'text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 transition-all';
+      }, 1500);
+    }
+
+    function saveStorage(data) {
+      const serialized = JSON.stringify(data);
+      try {
+        localStorage.setItem(STORAGE_KEY, serialized);
+      } catch (e) {
+        // Yoksay
+      }
+      try {
+        window.name = 'ODAKKAMPUS_DATA:' + serialized;
+      } catch (e) {
+        // Yoksay
+      }
+      flashSaveBadge();
+    }
+
+    // --- Tarih Yardımcıları ---
+    function getLocalDateStr(dateObj = new Date()) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function getDaysAgoDateStr(daysAgo) {
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      return getLocalDateStr(d);
+    }
+
+    let appState = loadStorage() || createEmptyData();
+
+    // --- Sayaç Durumu ('custom' = Geri Sayım | 'stopwatch' = Kronometre) ---
+    const initialMins = Number(appState.defaultTimerMinutes) || 40;
+    let timerState = {
+      mode: 'custom', // 'custom' | 'stopwatch'
+      running: false,
+      targetSeconds: initialMins * 60,
+      remainingSeconds: initialMins * 60,
+      elapsedSeconds: 0,
+      currentRating: 5,
+      intervalId: null
+    };
+
+    // --- Web Audio API Sesli Bildirim ---
+    let audioCtx = null;
+    function playNotificationSound() {
+      if (!appState.soundEnabled) return;
+      try {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContextClass();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.14);
+          gain.gain.setValueAtTime(0.18, audioCtx.currentTime + idx * 0.14);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + idx * 0.14 + 0.35);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(audioCtx.currentTime + idx * 0.14);
+          osc.stop(audioCtx.currentTime + idx * 0.14 + 0.36);
+        });
+      } catch (e) {
+        // Ses hatası olursa sessiz devam et
+      }
+    }
+
+    // --- Toast Gösterimi ---
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      const bgClass = type === 'success'
+        ? 'bg-emerald-600/95 border-emerald-400/40'
+        : type === 'info'
+        ? 'bg-indigo-600/95 border-indigo-400/40'
+        : 'bg-amber-600/95 border-amber-400/40';
+      el.className = `px-4 py-2.5 rounded-2xl border text-white text-xs sm:text-sm font-medium shadow-xl transition-all duration-300 ${bgClass}`;
+      el.textContent = message;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 300);
+      }, 2800);
+    }
+
+    // --- Yardımcı Formatlayıcılar ---
+    function formatMinutesToReadable(totalMins) {
+      const h = Math.floor(totalMins / 60);
+      const m = totalMins % 60;
+      if (h === 0) return `${m} dk`;
+      return `${h} sa ${m} dk`;
+    }
+
+    function formatClock(seconds) {
+      const hrs = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      if (hrs > 0) {
+        return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }
+      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    // --- Sayaç Görünümünü Güncelle ---
+    function updateTimerUI() {
+      const display = document.getElementById('timerDisplay');
+      const circle = document.getElementById('timerProgressCircle');
+      const elapsedSpan = document.getElementById('sessionElapsedMins');
+      const circumference = 653.45;
+
+      if (timerState.mode === 'stopwatch') {
+        display.textContent = formatClock(timerState.elapsedSeconds);
+        const progress = (timerState.elapsedSeconds % 3600) / 3600;
+        circle.style.strokeDashoffset = String(circumference * (1 - progress));
+      } else {
+        display.textContent = formatClock(timerState.remainingSeconds);
+        const ratio = timerState.targetSeconds > 0
+          ? timerState.remainingSeconds / timerState.targetSeconds
+          : 0;
+        circle.style.strokeDashoffset = String(circumference * (1 - ratio));
+      }
+
+      const eMins = Math.floor(timerState.elapsedSeconds / 60);
+      const eSecs = timerState.elapsedSeconds % 60;
+      elapsedSpan.textContent = `${eMins} dk ${eSecs} sn`;
+
+      const startPauseText = document.getElementById('startPauseText');
+      const startPauseIcon = document.getElementById('startPauseIcon');
+      if (timerState.running) {
+        startPauseText.textContent = 'Duraklat';
+        startPauseIcon.textContent = '⏸️';
+      } else {
+        startPauseText.textContent = timerState.elapsedSeconds > 0 ? 'Devam Et' : 'Sayacı Başlat';
+        startPauseIcon.textContent = '▶️';
+      }
+    }
+
+    function setTimerMode(mode, customMinutes = null, persist = false) {
+      if (timerState.intervalId) {
+        clearInterval(timerState.intervalId);
+        timerState.intervalId = null;
+      }
+      timerState.running = false;
+      timerState.mode = mode;
+      timerState.elapsedSeconds = 0;
+
+      const customBtn = document.getElementById('modeCustomBtn');
+      const stopwatchBtn = document.getElementById('modeStopwatchBtn');
+      const customBox = document.getElementById('customDurationBox');
+      const badge = document.getElementById('currentModeBadge');
+      const customInput = document.getElementById('customMinutesInput');
+
+      if (mode === 'stopwatch') {
+        stopwatchBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-indigo-600 text-white shadow transition';
+        customBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-400 hover:text-white transition';
+        customBox.classList.add('opacity-40', 'pointer-events-none');
+        timerState.targetSeconds = 0;
+        timerState.remainingSeconds = 0;
+        badge.textContent = '⏱️ KRONOMETRE (İLERİ SAYIM)';
+      } else {
+        customBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-indigo-600 text-white shadow transition';
+        stopwatchBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-400 hover:text-white transition';
+        customBox.classList.remove('opacity-40', 'pointer-events-none');
+        const mins = Math.max(1, Math.min(600, customMinutes || parseInt(customInput.value, 10) || 40));
+        customInput.value = mins;
+        appState.defaultTimerMinutes = mins;
+        if (persist) saveStorage(appState);
+        timerState.targetSeconds = mins * 60;
+        timerState.remainingSeconds = mins * 60;
+        badge.textContent = `⏳ HEDEF SÜRE: ${mins} DK`;
+      }
+
+      updateTimerUI();
+    }
+
+    function toggleStartPause() {
+      if (timerState.running) {
+        clearInterval(timerState.intervalId);
+        timerState.intervalId = null;
+        timerState.running = false;
+        updateTimerUI();
+        return;
+      }
+
+      timerState.running = true;
+      updateTimerUI();
+
+      timerState.intervalId = setInterval(() => {
+        timerState.elapsedSeconds += 1;
+
+        if (timerState.mode === 'custom') {
+          if (timerState.remainingSeconds > 0) {
+            timerState.remainingSeconds -= 1;
+          }
+          if (timerState.remainingSeconds <= 0) {
+            clearInterval(timerState.intervalId);
+            timerState.intervalId = null;
+            timerState.running = false;
+            playNotificationSound();
+            saveCurrentTimerSession(true);
+          }
+        }
+        updateTimerUI();
+      }, 1000);
+    }
+
+    function saveCurrentTimerSession(autoCompleted = false) {
+      let workedMinutes = 0;
+      if (autoCompleted && timerState.mode === 'custom') {
+        workedMinutes = Math.max(1, Math.round(timerState.targetSeconds / 60));
+      } else if (timerState.elapsedSeconds >= 60) {
+        workedMinutes = Math.max(1, Math.round(timerState.elapsedSeconds / 60));
+      } else if (timerState.elapsedSeconds > 0) {
+        workedMinutes = 1;
+      } else if (timerState.mode === 'custom') {
+        workedMinutes = Math.max(1, parseInt(document.getElementById('customMinutesInput').value, 10) || Math.round(timerState.targetSeconds / 60) || 40);
+      } else {
+        showToast('Kronometre modunda kaydetmek için önce sayacı başlatın.', 'warn');
+        return;
+      }
+
+      const topicRaw = document.getElementById('topicInput').value.trim();
+      const topicName = topicRaw || 'Genel Çalışma';
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      const newSession = {
+        id: 'sess_' + Date.now(),
+        topic: topicName,
+        minutes: workedMinutes,
+        date: getLocalDateStr(now),
+        time: timeStr,
+        mode: timerState.mode === 'stopwatch' ? 'Kronometre' : 'Geri Sayım',
+        rating: timerState.currentRating
+      };
+
+      appState.sessions.unshift(newSession);
+      saveStorage(appState);
+
+      if (timerState.intervalId) {
+        clearInterval(timerState.intervalId);
+        timerState.intervalId = null;
+      }
+      timerState.running = false;
+      timerState.elapsedSeconds = 0;
+      if (timerState.mode === 'custom') {
+        timerState.remainingSeconds = timerState.targetSeconds;
+      }
+      document.getElementById('topicInput').value = '';
+
+      updateTimerUI();
+      refreshAllViews();
+      showToast(`"${topicName}" (${workedMinutes} dk) kaydedildi!`);
+    }
+
+    // --- Üst Kartları, Bugünün Oturumlarını ve Geçmişi Güncelle ---
+    function refreshAllViews() {
+      const todayStr = getLocalDateStr();
+      const last7Dates = new Set();
+      for (let i = 0; i < 7; i++) {
+        last7Dates.add(getDaysAgoDateStr(i));
+      }
+
+      let todayMinutes = 0;
+      let weekMinutes = 0;
+      let totalMinutes = 0;
+      let ratingSum = 0;
+      const topicTotals = {};
+
+      appState.sessions.forEach(sess => {
+        const mins = Number(sess.minutes) || 0;
+        const tName = (sess.topic || 'Genel Çalışma').trim();
+        totalMinutes += mins;
+        ratingSum += Number(sess.rating) || 5;
+        if (sess.date === todayStr) {
+          todayMinutes += mins;
+        }
+        if (last7Dates.has(sess.date)) {
+          weekMinutes += mins;
+        }
+        topicTotals[tName] = (topicTotals[tName] || 0) + mins;
+      });
+
+      // 1. Bugün Kartı
+      document.getElementById('statTodayMinutes').textContent = `${todayMinutes} dk`;
+      document.getElementById('statTodayHours').textContent = formatMinutesToReadable(todayMinutes);
+      document.getElementById('dailyGoalText').textContent = appState.dailyGoal;
+      const pct = Math.min(100, Math.round((todayMinutes / Math.max(1, appState.dailyGoal)) * 100));
+      document.getElementById('dailyGoalBar').style.width = `${pct}%`;
+
+      // 2. Haftalık Kart
+      document.getElementById('statWeekMinutes').textContent = `${weekMinutes} dk`;
+      document.getElementById('statWeekSub').textContent = `${formatMinutesToReadable(weekMinutes)} • Günlük ort. ${Math.round(weekMinutes / 7)} dk`;
+
+      // 3. Toplam Kart
+      document.getElementById('statTotalMinutes').textContent = `${totalMinutes} dk`;
+      document.getElementById('statTotalSessions').textContent = `${formatMinutesToReadable(totalMinutes)} • ${appState.sessions.length} oturum`;
+
+      // 4. En Çok Çalışılan Konu
+      let topTopic = null;
+      let topTopicMins = 0;
+      Object.entries(topicTotals).forEach(([tName, mins]) => {
+        if (mins > topTopicMins) {
+          topTopicMins = mins;
+          topTopic = tName;
+        }
+      });
+
+      if (topTopic) {
+        document.getElementById('statTopSubject').textContent = `${topTopic} (${topTopicMins} dk)`;
+      } else {
+        document.getElementById('statTopSubject').textContent = 'Henüz Kayıt Yok';
+      }
+
+      const avgRating = appState.sessions.length > 0
+        ? (ratingSum / appState.sessions.length).toFixed(1)
+        : '-';
+      document.getElementById('statAvgFocus').textContent = `Ortalama Verimlilik: ${avgRating} / 5.0 ⭐`;
+
+      renderTodaySessions(todayStr);
+      renderTodos();
+      renderHistoryTable();
+      renderTopicBreakdown(topicTotals, totalMinutes);
+      updateCharts(topicTotals);
+    }
+
+    function renderTodaySessions(todayStr) {
+      const container = document.getElementById('todaySessionsList');
+      const badge = document.getElementById('todaySessionCountBadge');
+      const todaySessions = appState.sessions.filter(s => s.date === todayStr);
+      badge.textContent = `${todaySessions.length} Oturum`;
+
+      if (todaySessions.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-6 text-xs text-slate-400 bg-slate-900/50 rounded-2xl border border-slate-800/80">
+            Bugün henüz oturum kaydetmedin. Konuyu girip sayacı tamamladığında burada görünür.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = '';
+      todaySessions.forEach(sess => {
+        const color = getTopicColor(sess.topic);
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-3 rounded-2xl bg-slate-900/80 border border-slate-800';
+        item.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${color}"></span>
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-white truncate">${sess.topic}</div>
+              <div class="text-[11px] text-slate-400">${sess.time || 'Bugün'} • ${sess.mode || 'Geri Sayım'} • ${'⭐'.repeat(sess.rating || 5)}</div>
+            </div>
+          </div>
+          <span class="text-xs font-extrabold px-2.5 py-1 rounded-xl bg-indigo-500/20 text-indigo-300 shrink-0 ml-2">
+            +${sess.minutes} dk
+          </span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // --- Görev Listesi (Todos) ---
+    function renderTodos() {
+      const container = document.getElementById('todoListContainer');
+      const badge = document.getElementById('todoProgressBadge');
+      const doneCount = appState.todos.filter(t => t.done).length;
+      badge.textContent = `${doneCount}/${appState.todos.length}`;
+
+      container.innerHTML = '';
+      if (appState.todos.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Bugün için çalışma hedefi eklenmedi.</p>`;
+        return;
+      }
+
+      appState.todos.forEach(todo => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-900/75 border border-slate-800';
+        row.innerHTML = `
+          <label class="flex items-center gap-2.5 text-xs text-slate-200 cursor-pointer flex-1">
+            <input type="checkbox" data-todo-id="${todo.id}" ${todo.done ? 'checked' : ''} class="rounded border-slate-600 text-indigo-600 focus:ring-indigo-500" />
+            <span class="${todo.done ? 'line-through text-slate-500' : ''}">${todo.text}</span>
+          </label>
+          <button data-delete-todo="${todo.id}" class="text-slate-500 hover:text-rose-400 text-xs px-1">✕</button>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    // --- Geçmiş Tablosu ---
+    function renderHistoryTable() {
+      const tbody = document.getElementById('historyTableBody');
+      const searchVal = document.getElementById('historySearchInput').value.trim().toLowerCase();
+
+      const filtered = appState.sessions.filter(sess => {
+        return !searchVal ||
+          (sess.topic || '').toLowerCase().includes(searchVal) ||
+          (sess.date || '').includes(searchVal);
+      });
+
+      tbody.innerHTML = '';
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-8 text-center text-xs text-slate-400">
+              Henüz kaydedilmiş çalışma oturumu bulunmuyor.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      filtered.forEach(sess => {
+        const color = getTopicColor(sess.topic);
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/40 transition';
+        tr.innerHTML = `
+          <td class="py-3 px-3 text-slate-300 whitespace-nowrap">${sess.date} <span class="text-slate-500">${sess.time || ''}</span></td>
+          <td class="py-3 px-3">
+            <span class="inline-flex items-center gap-2 font-semibold text-white">
+              <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:${color}"></span>
+              ${sess.topic}
+            </span>
+          </td>
+          <td class="py-3 px-3 text-slate-400 whitespace-nowrap">${sess.mode || 'Geri Sayım'}</td>
+          <td class="py-3 px-3 font-bold text-indigo-300 whitespace-nowrap">${sess.minutes} dk</td>
+          <td class="py-3 px-3 whitespace-nowrap">${'⭐'.repeat(sess.rating || 5)}</td>
+          <td class="py-3 px-3 text-right whitespace-nowrap">
+            <button data-delete-session="${sess.id}" class="text-xs text-rose-400 hover:text-rose-300 font-medium px-2 py-1 rounded bg-rose-500/10">Sil</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // --- Konu Bazında Özet Kartları ---
+    function renderTopicBreakdown(topicTotals, totalMinutes) {
+      const grid = document.getElementById('subjectBreakdownGrid');
+      grid.innerHTML = '';
+
+      const entries = Object.entries(topicTotals).sort((a, b) => b[1] - a[1]);
+      if (entries.length === 0) {
+        grid.innerHTML = `<p class="text-xs text-slate-400 col-span-full text-center py-4">Henüz konu kaydı bulunmuyor.</p>`;
+        return;
+      }
+
+      entries.forEach(([topicName, mins]) => {
+        const pct = totalMinutes > 0 ? Math.round((mins / totalMinutes) * 100) : 0;
+        const color = getTopicColor(topicName);
+        const card = document.createElement('div');
+        card.className = 'p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between';
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${color}"></span>
+              <span class="text-sm font-bold text-white truncate">${topicName}</span>
+            </div>
+            <span class="text-xs font-bold text-slate-400 shrink-0">%${pct}</span>
+          </div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <span class="text-lg font-extrabold text-indigo-300">${mins} dk</span>
+            <span class="text-xs text-slate-400">${formatMinutesToReadable(mins)}</span>
+          </div>
+          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mt-2">
+            <div class="h-full rounded-full" style="width: ${pct}%; background-color: ${color}"></div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // --- Chart.js Grafikleri ---
+    let weeklyChartInstance = null;
+    let subjectChartInstance = null;
+
+    function updateCharts(topicTotals) {
+      if (typeof Chart === 'undefined') return;
+
+      const dayLabels = [];
+      const dayValues = [];
+      const dayNames = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+
+      for (let i = 6; i >= 0; i--) {
+        const dObj = new Date();
+        dObj.setDate(dObj.getDate() - i);
+        const dStr = getLocalDateStr(dObj);
+        const label = `${dObj.getDate()}/${dObj.getMonth() + 1} ${dayNames[dObj.getDay()]}`;
+        dayLabels.push(label);
+
+        const daySum = appState.sessions
+          .filter(s => s.date === dStr)
+          .reduce((acc, cur) => acc + (Number(cur.minutes) || 0), 0);
+        dayValues.push(daySum);
+      }
+
+      const barCtx = document.getElementById('weeklyBarChart').getContext('2d');
+      if (weeklyChartInstance) {
+        weeklyChartInstance.data.labels = dayLabels;
+        weeklyChartInstance.data.datasets[0].data = dayValues;
+        weeklyChartInstance.update();
+      } else {
+        weeklyChartInstance = new Chart(barCtx, {
+          type: 'bar',
+          data: {
+            labels: dayLabels,
+            datasets: [{
+              label: 'Çalışılan Dakika',
+              data: dayValues,
+              backgroundColor: 'rgba(99, 102, 241, 0.75)',
+              borderColor: '#818cf8',
+              borderWidth: 1,
+              borderRadius: 8
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { color: '#94a3b8' },
+                grid: { color: 'rgba(148, 163, 184, 0.1)' }
+              },
+              x: {
+                ticks: { color: '#94a3b8' },
+                grid: { display: false }
+              }
+            }
+          }
+        });
+      }
+
+      const sortedTopics = Object.entries(topicTotals).sort((a, b) => b[1] - a[1]);
+      const subLabels = sortedTopics.length > 0 ? sortedTopics.map(e => e[0]) : ['Henüz Veri Yok'];
+      const subData = sortedTopics.length > 0 ? sortedTopics.map(e => e[1]) : [1];
+      const subColors = sortedTopics.length > 0 ? sortedTopics.map(e => getTopicColor(e[0])) : ['#334155'];
+
+      const doughCtx = document.getElementById('subjectDoughnutChart').getContext('2d');
+      if (subjectChartInstance) {
+        subjectChartInstance.data.labels = subLabels;
+        subjectChartInstance.data.datasets[0].data = subData;
+        subjectChartInstance.data.datasets[0].backgroundColor = subColors;
+        subjectChartInstance.update();
+      } else {
+        subjectChartInstance = new Chart(doughCtx, {
+          type: 'doughnut',
+          data: {
+            labels: subLabels,
+            datasets: [{
+              data: subData,
+              backgroundColor: subColors,
+              borderColor: '#0f172a',
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: '#cbd5e1', boxWidth: 12, padding: 14 }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // --- Sekme Değiştirme ---
+    function switchTab(tabName) {
+      const views = {
+        timer: document.getElementById('viewTimer'),
+        stats: document.getElementById('viewStats'),
+        history: document.getElementById('viewHistory')
+      };
+      const btns = {
+        timer: document.getElementById('tabBtnTimer'),
+        stats: document.getElementById('tabBtnStats'),
+        history: document.getElementById('tabBtnHistory')
+      };
+
+      Object.keys(views).forEach(k => {
+        if (k === tabName) {
+          views[k].classList.remove('hidden');
+          btns[k].className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-indigo-600 text-white shadow';
+        } else {
+          views[k].classList.add('hidden');
+          btns[k].className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-300 hover:text-white';
+        }
+      });
+
+      if (tabName === 'stats') {
+        refreshAllViews();
+      }
+    }
+
+    // --- Event Listener Kurulumu ---
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('customMinutesInput').value = initialMins;
+      document.getElementById('manualDateInput').value = getLocalDateStr();
+      setTimerMode('custom', initialMins, false);
+      refreshAllViews();
+
+      // Sekmeler
+      document.getElementById('tabBtnTimer').addEventListener('click', () => switchTab('timer'));
+      document.getElementById('tabBtnStats').addEventListener('click', () => switchTab('stats'));
+      document.getElementById('tabBtnHistory').addEventListener('click', () => switchTab('history'));
+
+      // Mod Seçimi: Süre Belirle vs Kronometre
+      document.getElementById('modeCustomBtn').addEventListener('click', () => {
+        setTimerMode('custom');
+      });
+      document.getElementById('modeStopwatchBtn').addEventListener('click', () => {
+        setTimerMode('stopwatch');
+      });
+
+      // Dakika Ayarlama
+      document.getElementById('applyCustomMinutesBtn').addEventListener('click', () => {
+        const mins = Math.max(1, Math.min(600, parseInt(document.getElementById('customMinutesInput').value, 10) || 40));
+        setTimerMode('custom', mins, true);
+        showToast(`Çalışma süresi ${mins} dakika olarak ayarlandı.`, 'info');
+      });
+
+      document.getElementById('customMinutesInput').addEventListener('change', () => {
+        if (timerState.mode === 'custom' && !timerState.running && timerState.elapsedSeconds === 0) {
+          const mins = Math.max(1, Math.min(600, parseInt(document.getElementById('customMinutesInput').value, 10) || 40));
+          setTimerMode('custom', mins, true);
+        }
+      });
+
+      // Sayaç Ana Butonları
+      document.getElementById('startPauseBtn').addEventListener('click', toggleStartPause);
+      document.getElementById('finishAndSaveBtn').addEventListener('click', () => saveCurrentTimerSession(false));
+      document.getElementById('resetTimerBtn').addEventListener('click', () => {
+        setTimerMode(timerState.mode);
+        showToast('Sayaç sıfırlandı.', 'info');
+      });
+
+      // Verimlilik Yıldız Seçimi
+      document.getElementById('focusRatingGroup').addEventListener('click', (e) => {
+        const btn = e.target.closest('.rating-star');
+        if (!btn) return;
+        const rating = parseInt(btn.getAttribute('data-rating'), 10) || 5;
+        timerState.currentRating = rating;
+        document.getElementById('ratingValueLabel').textContent = `${rating}/5`;
+        document.querySelectorAll('.rating-star').forEach(star => {
+          const r = parseInt(star.getAttribute('data-rating'), 10);
+          star.style.opacity = r <= rating ? '1' : '0.3';
+        });
+      });
+
+      // Ses Aç/Kapat
+      document.getElementById('soundToggleBtn').addEventListener('click', () => {
+        appState.soundEnabled = !appState.soundEnabled;
+        saveStorage(appState);
+        document.getElementById('soundIcon').textContent = appState.soundEnabled ? '🔔' : '🔕';
+        document.getElementById('soundLabel').textContent = appState.soundEnabled ? 'Ses Açık' : 'Sessiz';
+      });
+
+      // Görev Ekleme ve Silme
+      document.getElementById('addTodoBtn').addEventListener('click', () => {
+        const input = document.getElementById('todoInput');
+        const text = input.value.trim();
+        if (!text) return;
+        appState.todos.push({ id: 'todo_' + Date.now(), text, done: false });
+        input.value = '';
+        saveStorage(appState);
+        renderTodos();
+      });
+
+      document.getElementById('todoInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') document.getElementById('addTodoBtn').click();
+      });
+
+      document.getElementById('todoListContainer').addEventListener('click', (e) => {
+        const check = e.target.closest('input[data-todo-id]');
+        if (check) {
+          const id = check.getAttribute('data-todo-id');
+          const item = appState.todos.find(t => t.id === id);
+          if (item) {
+            item.done = check.checked;
+            saveStorage(appState);
+            renderTodos();
+          }
+          return;
+        }
+        const delBtn = e.target.closest('button[data-delete-todo]');
+        if (delBtn) {
+          const id = delBtn.getAttribute('data-delete-todo');
+          appState.todos = appState.todos.filter(t => t.id !== id);
+          saveStorage(appState);
+          renderTodos();
+        }
+      });
+
+      // Manuel Geçmiş Süre Ekleme Modalı
+      const manualModal = document.getElementById('manualAddModal');
+      document.getElementById('openManualAddBtn').addEventListener('click', () => {
+        document.getElementById('manualDateInput').value = getLocalDateStr();
+        manualModal.classList.remove('hidden');
+        manualModal.classList.add('flex');
+      });
+      const closeManual = () => {
+        manualModal.classList.add('hidden');
+        manualModal.classList.remove('flex');
+      };
+      document.getElementById('closeManualAddBtn').addEventListener('click', closeManual);
+      document.getElementById('cancelManualAddBtn').addEventListener('click', closeManual);
+
+      document.getElementById('saveManualAddBtn').addEventListener('click', () => {
+        const topic = document.getElementById('manualTopicInput').value.trim() || 'Genel Çalışma';
+        const mins = Math.max(1, parseInt(document.getElementById('manualMinutesInput').value, 10) || 40);
+        const dateVal = document.getElementById('manualDateInput').value || getLocalDateStr();
+        const rating = parseInt(document.getElementById('manualRatingSelect').value, 10) || 5;
+
+        appState.sessions.unshift({
+          id: 'man_' + Date.now(),
+          topic,
+          minutes: mins,
+          date: dateVal,
+          time: 'Manuel',
+          mode: 'Manuel Kayıt',
+          rating
+        });
+
+        saveStorage(appState);
+        document.getElementById('manualTopicInput').value = '';
+        closeManual();
+        refreshAllViews();
+        showToast(`"${topic}" (${mins} dk) çalışma geçmişine kaydedildi!`);
+      });
+
+      // Günlük Hedef Modalı
+      const settingsModal = document.getElementById('settingsModal');
+      const openSettings = () => {
+        document.getElementById('dailyGoalInput').value = appState.dailyGoal;
+        settingsModal.classList.remove('hidden');
+        settingsModal.classList.add('flex');
+      };
+      const closeSettings = () => {
+        settingsModal.classList.add('hidden');
+        settingsModal.classList.remove('flex');
+      };
+      document.getElementById('editGoalBtn').addEventListener('click', openSettings);
+      document.getElementById('closeSettingsModalBtn').addEventListener('click', closeSettings);
+
+      document.getElementById('saveDailyGoalBtn').addEventListener('click', () => {
+        const goal = Math.max(15, parseInt(document.getElementById('dailyGoalInput').value, 10) || 120);
+        appState.dailyGoal = goal;
+        saveStorage(appState);
+        refreshAllViews();
+        closeSettings();
+        showToast(`Günlük çalışma hedefi ${goal} dakika olarak güncellendi!`);
+      });
+
+      // Geçmiş Arama, Silme, CSV ve JSON Yedekleme
+      document.getElementById('historySearchInput').addEventListener('input', renderHistoryTable);
+
+      document.getElementById('historyTableBody').addEventListener('click', (e) => {
+        const delBtn = e.target.closest('button[data-delete-session]');
+        if (!delBtn) return;
+        const id = delBtn.getAttribute('data-delete-session');
+        appState.sessions = appState.sessions.filter(s => s.id !== id);
+        saveStorage(appState);
+        refreshAllViews();
+        showToast('Çalışma kaydı silindi.', 'info');
+      });
+
+      document.getElementById('exportCsvBtn').addEventListener('click', () => {
+        if (appState.sessions.length === 0) {
+          showToast('İndirilecek çalışma kaydı yok.', 'warn');
+          return;
+        }
+        const headers = ['Tarih', 'Saat', 'Konu', 'Mod', 'Dakika', 'VerimPuani'];
+        const rows = appState.sessions.map(s => {
+          return [
+            s.date,
+            s.time || '',
+            `"${(s.topic || '').replace(/"/g, '""')}"`,
+            s.mode || 'Geri Sayım',
+            s.minutes,
+            s.rating || 5
+          ].join(',');
+        });
+        const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `ders_calisma_gecmisi_${getLocalDateStr()}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showToast('Çalışma geçmişi CSV dosyası olarak indirildi.');
+      });
+
+      document.getElementById('exportJsonBtn').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `odakkampus_yedek_${getLocalDateStr()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showToast('Veri yedeği (.json) indirildi.');
+      });
+
+      document.getElementById('importJsonInput').addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+            if (parsed && Array.isArray(parsed.sessions)) {
+              appState = {
+                dailyGoal: Number(parsed.dailyGoal) || 120,
+                defaultTimerMinutes: Number(parsed.defaultTimerMinutes) || 40,
+                soundEnabled: parsed.soundEnabled !== false,
+                sessions: parsed.sessions,
+                todos: Array.isArray(parsed.todos) ? parsed.todos : []
+              };
+              saveStorage(appState);
+              refreshAllViews();
+              showToast('Veri yedeği başarıyla yüklendi!');
+            } else {
+              showToast('Geçersiz yedek dosyası formatı.', 'warn');
+            }
+          } catch (err) {
+            showToast('Yedek dosyası okunamadı.', 'warn');
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      });
+
+      // Geçmişi Temizle Onay Modalı
+      const clearModal = document.getElementById('confirmClearModal');
+      document.getElementById('clearAllDataBtn').addEventListener('click', () => {
+        clearModal.classList.remove('hidden');
+        clearModal.classList.add('flex');
+      });
+      document.getElementById('cancelClearBtn').addEventListener('click', () => {
+        clearModal.classList.add('hidden');
+        clearModal.classList.remove('flex');
+      });
+      document.getElementById('confirmClearYesBtn').addEventListener('click', () => {
+        appState.sessions = [];
+        saveStorage(appState);
+        clearModal.classList.add('hidden');
+        clearModal.classList.remove('flex');
+        refreshAllViews();
+        showToast('Tüm çalışma geçmişi temizlendi.', 'info');
+      });
+    });
+  </script>
+</body>
+</html>
