@@ -56,7 +56,7 @@
           <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
             OdakKampüs
             <span id="saveStatusBadge" class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-              ✓ Otomatik Kayıt Aktif
+              ✓ Sadece Bu Bilgisayarda Kayıtlı
             </span>
           </h1>
           <p class="text-xs text-slate-400">Ders Çalışma Sayacı & Geçmiş Süre Analizi</p>
@@ -430,7 +430,7 @@
   </div>
 
   <script>
-    // --- Kalıcı Veri Depolama (LocalStorage + Window.name Fallback) ---
+    // --- Her Bilgisayarın Kendi Tarayıcısına Özel Kalıcı Veri Depolama ---
     const STORAGE_KEY = 'odakkampus_user_data_v3';
 
     const TOPIC_COLORS = [
@@ -492,10 +492,10 @@
     function flashSaveBadge() {
       const badge = document.getElementById('saveStatusBadge');
       if (!badge) return;
-      badge.textContent = '💾 Kaydedildi';
+      badge.textContent = '💾 Bu Bilgisayara Kaydedildi';
       badge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-400/50 transition-all';
       setTimeout(() => {
-        badge.textContent = '✓ Otomatik Kayıt Aktif';
+        badge.textContent = '✓ Sadece Bu Bilgisayarda Kayıtlı';
         badge.className = 'text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 transition-all';
       }, 1500);
     }
