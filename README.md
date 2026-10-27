@@ -1,6 +1,6 @@
 OdakKampüs ⏱️
 
-🔗 Live App: https://yusufakn16.github.io/OdakKampus/
+🔗 Live App: https://yusufakn16.github.io/FocusCampus/
 
 A lightweight, privacy-focused study timer and productivity tracker. It runs 100% in your browser—no login or server required, and every user's data stays completely private on their own device.
 
@@ -18,7 +18,7 @@ Data Backup: Export or restore your study history anytime via .json or .csv.
 
 🚀 How to Use
 
-Open the App: Go to https://yusufakn16.github.io/OdakKampus/.
+Open the App: Go to https://yusufakn16.github.io/FocusCampus/
 
 Choose Mode: Select ⏳ Süre Belirle (Countdown) or ⏱️ Kronometre (Stopwatch).
 
