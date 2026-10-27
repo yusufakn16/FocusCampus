@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OdakKampüs — Ders Çalışma Sayacı ve Verimlilik Takibi</title>
+  <title>FocusCampus — Ders Çalışma Sayacı ve Verimlilik Takibi</title>
   <!-- Tarayıcı Sekmesinde Görünen Saat Logosu (Favicon) -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'%3E%3Cpath d='M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm.75-13h-1.5v6.25l4.5 2.7.75-1.23-3.75-2.22V7z'/%3E%3C/svg%3E" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
@@ -56,7 +56,7 @@
         </div>
         <div>
           <h1 class="text-lg font-bold tracking-tight text-white">
-            OdakKampüs
+            FocusCampus
           </h1>
           <p class="text-xs text-slate-400">Ders Çalışma Sayacı & Geçmiş Süre Analizi</p>
         </div>
@@ -1522,7 +1522,7 @@
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `ders_calisma_gecmisi_${getLocalDateStr()}.csv`;
+        link.download = `focuscampus_calisma_gecmisi_${getLocalDateStr()}.csv`;
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -1535,7 +1535,7 @@
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `odakkampus_yedek_${getLocalDateStr()}.json`;
+        link.download = `focuscampus_yedek_${getLocalDateStr()}.json`;
         document.body.appendChild(link);
         link.click();
         link.remove();
