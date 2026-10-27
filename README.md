@@ -1,4 +1,4 @@
-OdakKampüs ⏱️
+FocusCampus ⏱️
 
 🔗 Live App: https://yusufakn16.github.io/FocusCampus/
 
