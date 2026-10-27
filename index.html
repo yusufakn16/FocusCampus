@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OdakKampüs — Ders Çalışma Sayacı ve Verimlilik Takibi</title>
+  <!-- Tarayıcı Sekmesinde Görünen Saat Logosu (Favicon) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'%3E%3Cpath d='M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm.75-13h-1.5v6.25l4.5 2.7.75-1.23-3.75-2.22V7z'/%3E%3C/svg%3E" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -53,11 +55,8 @@
           </svg>
         </div>
         <div>
-          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 class="text-lg font-bold tracking-tight text-white">
             OdakKampüs
-            <span id="saveStatusBadge" class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-              ✓ Sadece Bu Bilgisayarda Kayıtlı
-            </span>
           </h1>
           <p class="text-xs text-slate-400">Ders Çalışma Sayacı & Geçmiş Süre Analizi</p>
         </div>
@@ -174,10 +173,43 @@
           </div>
         </div>
 
-        <!-- Çalışılacak Konu Girişi -->
-        <div class="w-full mt-4">
-          <label for="topicInput" class="block text-xs font-semibold text-slate-300 mb-1.5">📝 Çalışılacak Konu</label>
-          <input id="topicInput" type="text" placeholder="Çalışacağın konuyu yaz..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
+        <!-- Çalışılacak Konu ve Ders Seçimi / Ekleme Alanı -->
+        <div class="w-full mt-4 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <label for="topicInput" class="block text-xs font-semibold text-slate-300">📝 Çalışılacak Ders / Konu</label>
+            <span class="text-[11px] text-slate-400">Listeden seçebilir veya yeni ekleyebilirsin</span>
+          </div>
+
+          <!-- Seçim Açılır Menüsü ve Yeni Ekleme Kutusu -->
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+            <!-- 1. Kayıtlı Derslerden Seç -->
+            <div class="sm:col-span-6 relative">
+              <select id="savedTopicSelect" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer">
+                <option value="">📋 Kayıtlı Derslerden Seç...</option>
+              </select>
+            </div>
+
+            <!-- 2. Yeni Ders/Konu Yaz ve Ekle -->
+            <div class="sm:col-span-6 flex gap-2">
+              <input id="topicInput" list="savedTopicsDatalist" type="text" placeholder="Ders/konu yaz veya yeni ekle..." class="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
+              <datalist id="savedTopicsDatalist"></datalist>
+              <button id="addTopicBtn" type="button" class="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shrink-0 transition flex items-center gap-1 shadow" title="Bu dersi kalıcı listeye ekle">
+                <span>+</span>
+                <span>Ekle</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Kayıtlı Dersler Hızlı Seçim Butonları (Tek Tıkla Seç) -->
+          <div class="pt-0.5">
+            <div class="text-[11px] font-medium text-slate-400 mb-1.5 flex items-center justify-between">
+              <span>Hızlı Seçim Etiketleri:</span>
+              <span id="savedTopicCountBadge" class="text-[10px] text-slate-500">0 kayıtlı ders</span>
+            </div>
+            <div id="savedTopicsPillsContainer" class="flex flex-wrap items-center gap-1.5 min-h-[30px]">
+              <!-- JavaScript ile butonlar buraya yerleştirilir -->
+            </div>
+          </div>
         </div>
 
         <!-- Dairesel Sayaç Göstergesi -->
@@ -366,8 +398,8 @@
       </div>
       <div class="space-y-3">
         <div>
-          <label for="manualTopicInput" class="block text-xs font-medium text-slate-300 mb-1">Çalışılan Konu</label>
-          <input id="manualTopicInput" type="text" placeholder="Çalıştığın konuyu yaz..." class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white" />
+          <label for="manualTopicInput" class="block text-xs font-medium text-slate-300 mb-1">Çalışılan Konu / Ders</label>
+          <input id="manualTopicInput" list="savedTopicsDatalist" type="text" placeholder="Çalıştığın konuyu yaz veya listeden seç..." class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white" />
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
@@ -421,7 +453,7 @@
     <div class="glass-card rounded-3xl max-w-sm w-full p-6 border border-slate-700 shadow-2xl text-center">
       <div class="text-3xl mb-2">⚠️</div>
       <h3 class="text-base font-bold text-white mb-1">Tüm Kayıtlar Silinsin mi?</h3>
-      <p class="text-xs text-slate-400 mb-5">Kaydedilmiş tüm geçmiş çalışma sürelerin silinecek. Bu işlem geri alınamaz.</p>
+      <p class="text-xs text-slate-400 mb-5">Kaydedilmiş tüm geçmiş çalışma sürelerin silinecek. (Kayıtlı ders listeniz korunur.) Bu işlem geri alınamaz.</p>
       <div class="flex justify-center gap-2">
         <button id="cancelClearBtn" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Vazgeç</button>
         <button id="confirmClearYesBtn" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold">Evet, Sil</button>
@@ -463,7 +495,8 @@
         defaultTimerMinutes: 40,
         soundEnabled: true,
         sessions: [],
-        todos: []
+        todos: [],
+        savedTopics: []
       };
     }
 
@@ -473,7 +506,14 @@
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (parsed && Array.isArray(parsed.sessions)) return parsed;
+          if (parsed && Array.isArray(parsed.sessions)) {
+            if (!Array.isArray(parsed.savedTopics)) {
+              // Oturumlarda daha önceden girilmiş konular varsa otomatik listeye aktar
+              parsed.savedTopics = [...new Set(parsed.sessions.map(s => (s.topic || '').trim()).filter(Boolean))];
+            }
+            if (!Array.isArray(parsed.todos)) parsed.todos = [];
+            return parsed;
+          }
         }
       } catch (e) {
         // Sandboxed iframe içinde localStorage kısıtlıysa window.name yedeğine bak
@@ -481,23 +521,18 @@
       try {
         if (window.name && window.name.startsWith('ODAKKAMPUS_DATA:')) {
           const parsed = JSON.parse(window.name.slice('ODAKKAMPUS_DATA:'.length));
-          if (parsed && Array.isArray(parsed.sessions)) return parsed;
+          if (parsed && Array.isArray(parsed.sessions)) {
+            if (!Array.isArray(parsed.savedTopics)) {
+              parsed.savedTopics = [...new Set(parsed.sessions.map(s => (s.topic || '').trim()).filter(Boolean))];
+            }
+            if (!Array.isArray(parsed.todos)) parsed.todos = [];
+            return parsed;
+          }
         }
       } catch (e) {
         // Yoksay
       }
       return null;
-    }
-
-    function flashSaveBadge() {
-      const badge = document.getElementById('saveStatusBadge');
-      if (!badge) return;
-      badge.textContent = '💾 Bu Bilgisayara Kaydedildi';
-      badge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-400/50 transition-all';
-      setTimeout(() => {
-        badge.textContent = '✓ Sadece Bu Bilgisayarda Kayıtlı';
-        badge.className = 'text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 transition-all';
-      }, 1500);
     }
 
     function saveStorage(data) {
@@ -512,7 +547,6 @@
       } catch (e) {
         // Yoksay
       }
-      flashSaveBadge();
     }
 
     // --- Tarih Yardımcıları ---
@@ -607,6 +641,139 @@
         return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
       }
       return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    // --- Kayıtlı Konu/Ders Yönetimi ---
+    function renderSavedTopicsUI() {
+      const select = document.getElementById('savedTopicSelect');
+      const pillsContainer = document.getElementById('savedTopicsPillsContainer');
+      const datalist = document.getElementById('savedTopicsDatalist');
+      const countBadge = document.getElementById('savedTopicCountBadge');
+      const currentTopic = (document.getElementById('topicInput').value || '').trim();
+
+      if (!Array.isArray(appState.savedTopics)) {
+        appState.savedTopics = [];
+      }
+
+      if (countBadge) {
+        countBadge.textContent = `${appState.savedTopics.length} kayıtlı ders`;
+      }
+
+      // 1. Dropdown Güncelle
+      if (select) {
+        select.innerHTML = '<option value="">📋 Kayıtlı Derslerden Seç...</option>';
+        appState.savedTopics.forEach(topic => {
+          const opt = document.createElement('option');
+          opt.value = topic;
+          opt.textContent = topic;
+          if (topic.toLowerCase() === currentTopic.toLowerCase()) {
+            opt.selected = true;
+          }
+          select.appendChild(opt);
+        });
+        if (!currentTopic) {
+          select.value = '';
+        }
+      }
+
+      // 2. Datalist Güncelle (Arama / Hızlı Tamamlama)
+      if (datalist) {
+        datalist.innerHTML = '';
+        appState.savedTopics.forEach(topic => {
+          const opt = document.createElement('option');
+          opt.value = topic;
+          datalist.appendChild(opt);
+        });
+      }
+
+      // 3. Hızlı Seçim Butonları (Pills / Rozetler)
+      if (pillsContainer) {
+        pillsContainer.innerHTML = '';
+        if (appState.savedTopics.length === 0) {
+          pillsContainer.innerHTML = `
+            <span class="text-[11px] text-slate-500 italic py-1">
+              Henüz kayıtlı ders yok. Yukarıdaki kutuya ders/konu yazıp <strong>"+ Ekle"</strong> butonuna basarak tek tıkla seçebileceğiniz listenizi oluşturun.
+            </span>
+          `;
+          return;
+        }
+
+        appState.savedTopics.forEach(topic => {
+          const isSelected = topic.toLowerCase() === currentTopic.toLowerCase();
+          const color = getTopicColor(topic);
+          const pill = document.createElement('div');
+          pill.className = `group inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border transition select-none cursor-pointer ${
+            isSelected
+              ? 'bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-600/30'
+              : 'bg-slate-900/90 text-slate-300 border-slate-700/80 hover:border-slate-500 hover:text-white'
+          }`;
+
+          pill.innerHTML = `
+            <span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${isSelected ? '#ffffff' : color}"></span>
+            <span class="topic-name-btn truncate max-w-[150px]">${topic}</span>
+            <button type="button" data-delete-topic="${topic}" class="opacity-40 group-hover:opacity-100 hover:text-rose-400 text-xs ml-0.5 px-1 py-0.5 rounded transition" title="Bu dersi listeden kaldır">✕</button>
+          `;
+
+          // Tıklayınca bu konuyu seç
+          pill.querySelector('.topic-name-btn').addEventListener('click', () => {
+            selectSavedTopic(topic);
+          });
+
+          // Çarpıya tıklayınca listeden sil
+          pill.querySelector('[data-delete-topic]').addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeSavedTopic(topic);
+          });
+
+          pillsContainer.appendChild(pill);
+        });
+      }
+    }
+
+    function selectSavedTopic(topic) {
+      const input = document.getElementById('topicInput');
+      const select = document.getElementById('savedTopicSelect');
+      if (input) input.value = topic;
+      if (select) select.value = topic;
+      renderSavedTopicsUI();
+      showToast(`"${topic}" seçildi.`);
+    }
+
+    function addSavedTopic(rawTopic) {
+      const topic = (rawTopic || '').trim();
+      if (!topic) {
+        showToast('Lütfen eklemek istediğiniz ders veya konunun adını yazın.', 'warn');
+        return false;
+      }
+
+      if (!Array.isArray(appState.savedTopics)) {
+        appState.savedTopics = [];
+      }
+
+      const existingIndex = appState.savedTopics.findIndex(t => t.toLowerCase() === topic.toLowerCase());
+      if (existingIndex !== -1) {
+        selectSavedTopic(appState.savedTopics[existingIndex]);
+        showToast(`"${appState.savedTopics[existingIndex]}" zaten kayıtlı ve seçildi.`, 'info');
+        return true;
+      }
+
+      appState.savedTopics.push(topic);
+      saveStorage(appState);
+      selectSavedTopic(topic);
+      showToast(`"${topic}" ders listenize eklendi!`, 'success');
+      return true;
+    }
+
+    function removeSavedTopic(topicToRemove) {
+      if (!Array.isArray(appState.savedTopics)) return;
+      appState.savedTopics = appState.savedTopics.filter(t => t !== topicToRemove);
+      saveStorage(appState);
+      const input = document.getElementById('topicInput');
+      if (input && input.value.trim().toLowerCase() === topicToRemove.toLowerCase()) {
+        input.value = '';
+      }
+      renderSavedTopicsUI();
+      showToast(`"${topicToRemove}" listeden silindi.`, 'info');
     }
 
     // --- Sayaç Görünümünü Güncelle ---
@@ -732,6 +899,11 @@
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+      // Eğer kullanıcı yeni bir konu adı yazdıysa otomatik kayıtlı ders listesine de ekle
+      if (topicRaw && !appState.savedTopics.some(t => t.toLowerCase() === topicRaw.toLowerCase())) {
+        appState.savedTopics.push(topicRaw);
+      }
+
       const newSession = {
         id: 'sess_' + Date.now(),
         topic: topicName,
@@ -754,10 +926,10 @@
       if (timerState.mode === 'custom') {
         timerState.remainingSeconds = timerState.targetSeconds;
       }
-      document.getElementById('topicInput').value = '';
 
       updateTimerUI();
       refreshAllViews();
+      renderSavedTopicsUI();
       showToast(`"${topicName}" (${workedMinutes} dk) kaydedildi!`);
     }
 
@@ -1112,6 +1284,7 @@
       document.getElementById('manualDateInput').value = getLocalDateStr();
       setTimerMode('custom', initialMins, false);
       refreshAllViews();
+      renderSavedTopicsUI();
 
       // Sekmeler
       document.getElementById('tabBtnTimer').addEventListener('click', () => switchTab('timer'));
@@ -1138,6 +1311,50 @@
           const mins = Math.max(1, Math.min(600, parseInt(document.getElementById('customMinutesInput').value, 10) || 40));
           setTimerMode('custom', mins, true);
         }
+      });
+
+      // Ders / Konu Yönetimi: Dropdown Seçimi
+      document.getElementById('savedTopicSelect').addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (val) {
+          selectSavedTopic(val);
+        }
+      });
+
+      // Ders / Konu Yönetimi: Yeni Ders Ekle Butonu
+      document.getElementById('addTopicBtn').addEventListener('click', () => {
+        const input = document.getElementById('topicInput');
+        addSavedTopic(input.value);
+      });
+
+      // Konu inputunda Enter'a basınca ekleme ve seçme
+      document.getElementById('topicInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          document.getElementById('addTopicBtn').click();
+        }
+      });
+
+      // Konu inputuna el ile yazı yazıldıkça pills rozetlerindeki seçili durumu anlık güncelle
+      document.getElementById('topicInput').addEventListener('input', () => {
+        const val = document.getElementById('topicInput').value.trim();
+        const select = document.getElementById('savedTopicSelect');
+        if (select) {
+          const match = appState.savedTopics.find(t => t.toLowerCase() === val.toLowerCase());
+          select.value = match || '';
+        }
+        // Rozet aktifliğini güncelle
+        document.querySelectorAll('#savedTopicsPillsContainer > div').forEach(pill => {
+          const nameSpan = pill.querySelector('.topic-name-btn');
+          if (nameSpan) {
+            const isMatch = nameSpan.textContent.trim().toLowerCase() === val.toLowerCase();
+            if (isMatch) {
+              pill.className = 'group inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border transition select-none cursor-pointer bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-600/30';
+            } else {
+              pill.className = 'group inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border transition select-none cursor-pointer bg-slate-900/90 text-slate-300 border-slate-700/80 hover:border-slate-500 hover:text-white';
+            }
+          }
+        });
       });
 
       // Sayaç Ana Butonları
@@ -1225,6 +1442,11 @@
         const dateVal = document.getElementById('manualDateInput').value || getLocalDateStr();
         const rating = parseInt(document.getElementById('manualRatingSelect').value, 10) || 5;
 
+        // Manuel eklenen dersi de kayıtlı listeye ekle
+        if (topic && !appState.savedTopics.some(t => t.toLowerCase() === topic.toLowerCase())) {
+          appState.savedTopics.push(topic);
+        }
+
         appState.sessions.unshift({
           id: 'man_' + Date.now(),
           topic,
@@ -1239,6 +1461,7 @@
         document.getElementById('manualTopicInput').value = '';
         closeManual();
         refreshAllViews();
+        renderSavedTopicsUI();
         showToast(`"${topic}" (${mins} dk) çalışma geçmişine kaydedildi!`);
       });
 
@@ -1333,10 +1556,12 @@
                 defaultTimerMinutes: Number(parsed.defaultTimerMinutes) || 40,
                 soundEnabled: parsed.soundEnabled !== false,
                 sessions: parsed.sessions,
-                todos: Array.isArray(parsed.todos) ? parsed.todos : []
+                todos: Array.isArray(parsed.todos) ? parsed.todos : [],
+                savedTopics: Array.isArray(parsed.savedTopics) ? parsed.savedTopics : []
               };
               saveStorage(appState);
               refreshAllViews();
+              renderSavedTopicsUI();
               showToast('Veri yedeği başarıyla yüklendi!');
             } else {
               showToast('Geçersiz yedek dosyası formatı.', 'warn');
